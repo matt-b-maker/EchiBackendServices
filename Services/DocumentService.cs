@@ -119,7 +119,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
 
             // Pass the stream to your method
             return await azureBlobStorageService.UploadFileToAzureStorage(fileStream, "echidocs",
-                $"{client.ClientFirstName} {client.ClientLastName} {client.InspectionAddressLineOne} {Guid.NewGuid()}.docx");
+                $"{client.ClientFirstName} {client.ClientLastName} {client.InspectionAddressLineOne} Inspection Agreement {Guid.NewGuid()}.docx");
         }
         catch (Exception e)
         {
@@ -171,7 +171,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         }
     }
 
-    public async Task<bool> CreateRadonAddendum(ClientModel client)
+    public async Task<string> CreateRadonAddendum(ClientModel client)
     {
         const string radonAddendumTemplateResourceName =
             "EchiBackendServices.Resources.Documents.Radon Addendum Template.docx";
@@ -209,7 +209,12 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
 
         radonDocument.Save();
 
-        return true;
+        // Get the stream from the file path
+        await using var fileStream = new FileStream(RadonAddendumFilePath, FileMode.Open, FileAccess.Read);
+
+        // Pass the stream to your method
+        return await azureBlobStorageService.UploadFileToAzureStorage(fileStream, "echidocs",
+            $"{client.ClientFirstName} {client.ClientLastName} {client.InspectionAddressLineOne} Radon Addendum {Guid.NewGuid()}.docx");
     }
 
     private void ReplaceLastDatedInInspectionAgreement(Container doc, string currentDate)

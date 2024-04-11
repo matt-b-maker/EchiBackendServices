@@ -14,8 +14,14 @@ namespace EchiBackendServices.Controllers
         {
             try
             {
-                var documentUrl = await documentService.CreateInspectionAgreement(clientModel);
-                return Ok(documentUrl);
+                if (!clientModel.IncludeRadonAddendum)
+                {
+                    var documentUrl = await documentService.CreateInspectionAgreement(clientModel);
+                    return Ok(new[] { documentUrl });
+                }
+                var inspectionAgreementUrl = await documentService.CreateInspectionAgreement(clientModel);
+                var radonAddendumUrl = await documentService.CreateRadonAddendum(clientModel);
+                return Ok(new[] { inspectionAgreementUrl, radonAddendumUrl });
             }
             catch (Exception e)
             {
