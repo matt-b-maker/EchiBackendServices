@@ -54,26 +54,6 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
             // Replace the placeholder text with the current date   
             var currentDate = DateTime.Today.ToString("M/d/yyyy");
 
-            client = new ClientModel()
-            {
-                //random data for testing
-                ClientFirstName = "John",
-                ClientLastName = "Doe",
-                ClientAddressLineOne = "123 Main St",
-                ClientAddressLineTwo = "Apt 1",
-                ClientAddressCity = "Albuquerque",
-                ClientAddressState = "NM",
-                ClientAddressZipCode = "87101",
-                ClientPhoneNumber = "555-555-5555",
-                ClientEmailAddress = "goodjob@gmail.com",
-                InspectionAddressLineOne = "456 Elm St",
-                InspectionAddressLineTwo = "Suite 2",
-                InspectionAddressCity = "Santa Fe",
-                InspectionAddressState = "NM",
-                InspectionAddressZipCode = "87501",
-                Fee = "$500"
-            };
-
             // Load the DOCX document using Xceed DocX
             using var inspectionAgreementDocument = DocX.Load(InspectionAgreementFilePath);
 

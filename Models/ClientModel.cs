@@ -12,7 +12,7 @@ public class ClientModel
 
     public string MainInspectionImageUrl { get; set; } = string.Empty;
 
-    public string MainInspectionImageFileName { get; set; }
+    public string? MainInspectionImageFileName { get; set; }
     public string? ClientEmailAddress { get; set; }
 
     public string? ClientFirstName { get; set; }
