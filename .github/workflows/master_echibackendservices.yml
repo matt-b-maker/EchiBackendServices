@@ -23,7 +23,7 @@ jobs:
         run: dotnet build ./EchiBackendServices.csproj --configuration Release
 
       - name: dotnet publish
-        run: dotnet publish ./EchiBackendServices.csproj -c Release -o C:\Users\runneradmin\AppData\Local\Microsoft\dotnet/myapp
+        run: dotnet publish ./EchiBackendServices.csproj -c Release -o ${{ github.workspace }}/myapp  
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v3
@@ -59,4 +59,4 @@ jobs:
         with:
           app-name: 'EchiBackendServices'
           slot-name: 'Production'
-          package: ${{ github.workspace }}/myapp  # Update this to the correct path of your published app
+          package: ${{ github.workspace }}/myapp  
