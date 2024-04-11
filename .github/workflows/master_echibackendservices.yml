@@ -23,7 +23,7 @@ jobs:
         run: dotnet build ./EchiBackendServices.csproj --configuration Release
 
       - name: dotnet publish
-        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
+        run: dotnet publish ./EchiBackendServices.csproj -c Release -o C:\Users\runneradmin\AppData\Local\Microsoft\dotnet/myapp
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v3
