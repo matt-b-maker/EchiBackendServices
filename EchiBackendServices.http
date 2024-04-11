@@ -1,0 +1,6 @@
+@EchiBackendServices_HostAddress = http://localhost:5249
+
+GET {{EchiBackendServices_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
