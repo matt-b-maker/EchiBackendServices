@@ -14,7 +14,8 @@ public class ClientModel
 
     public string? MainInspectionImageFileName { get; set; }
 
-    public string? SerializedClientAndInspection { get; set; }
+    public string? SerializedInspection { get; set; }
+    public string? SerializedClient { get; set; }
     public string? Guid { get; set; }
 
     public string? ClientFullName => $"{ClientFirstName} {ClientLastName}";

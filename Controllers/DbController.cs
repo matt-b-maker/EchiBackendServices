@@ -21,7 +21,7 @@ public class DbController(ConnectionStringStore connectionStringStore) : Control
             conn.Open();
 
             const string sql =
-                $@"INSERT INTO CLIENTS (UserId, Guid, ClientName, SerializedClientAndInspection)  VALUES (@UserId, @Guid, @ClientFullName, @SerializedClientAndInspection)";
+                $@"INSERT INTO CLIENTS (UserId, Guid, ClientName, SerializedClient, SerializedInspection)  VALUES (@UserId, @Guid, @ClientFullName, @SerializedClient, @SerializedInspection)";
 
             conn.Execute(sql, client);
 
@@ -56,9 +56,7 @@ public class DbController(ConnectionStringStore connectionStringStore) : Control
 
             conn.Open();
 
-            client.SerializedClientAndInspection = JsonConvert.SerializeObject(client);
-
-            const string sql = @"UPDATE CLIENTS SET ClientName = @ClientFullName, SerializedClientAndInspection = @SerializedClientAndInspection WHERE UserId = @UserId AND Guid = @Guid";
+            const string sql = @"UPDATE CLIENTS SET ClientName = @ClientFullName, SerializedClient = @SerializedClient, SerializedInspection = @SerializedInspection WHERE UserId = @UserId AND Guid = @Guid";
 
             conn.Execute(sql, client);
 
