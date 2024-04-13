@@ -1,6 +1,7 @@
-
-using System.Reflection.Metadata;
+using System.Data.SqlClient;
 using EchiBackendServices.Services;
+using Dapper;
+using EchiBackendServices.Models;
 
 namespace EchiBackendServices
 {
@@ -10,11 +11,16 @@ namespace EchiBackendServices
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
+            var sqlConnString = Environment.GetEnvironmentVariable("SqlConnString");
 
+            // Add services to the container.
             builder.Services.AddControllers();
             builder.Services.AddSingleton<DocumentService>();
             builder.Services.AddSingleton<AzureBlobStorageService>();
+            builder.Services.AddSingleton(new ConnectionStringStore()
+            {
+                SqlConnectionString = sqlConnString
+            });
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();

@@ -13,6 +13,12 @@ public class ClientModel
     public string MainInspectionImageUrl { get; set; } = string.Empty;
 
     public string? MainInspectionImageFileName { get; set; }
+
+    public string? SerializedThis { get; set; }
+    public string? Guid { get; set; }
+
+    public string? ClientFullName => $"{ClientFirstName} {ClientLastName} {InspectionAddressLineOne}";
+
     public string? ClientEmailAddress { get; set; }
 
     public string? ClientFirstName { get; set; }
