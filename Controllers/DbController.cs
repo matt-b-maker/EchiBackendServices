@@ -11,29 +11,17 @@ namespace EchiBackendServices.Controllers;
 [ApiController]
 public class DbController(ConnectionStringStore connectionStringStore) : Controller
 {
-    private readonly ConnectionStringStore _connectionStringStore = connectionStringStore;
-
-    [HttpPost]
-    public IActionResult GetClientsForUser()
-    {
-        return Ok();
-    }
-
     [HttpPost]
     public IActionResult InsertClient(ClientModel client)
     {
         try
         {
-            using var conn = new SqlConnection(_connectionStringStore.SqlConnectionString);
+            using var conn = new SqlConnection(connectionStringStore.SqlConnectionString);
 
             conn.Open();
 
-            client.SerializedThis = JsonConvert.SerializeObject(client);
-            client.Guid = Guid.NewGuid().ToString();
-
-
             const string sql =
-                $@"INSERT INTO CLIENTS (UserId, Guid, ClientName, Inspection)  VALUES (@UserId, @Guid, @ClientFullName, @SerializedThis)";
+                $@"INSERT INTO CLIENTS (UserId, Guid, ClientName, SerializedClientAndInspection)  VALUES (@UserId, @Guid, @ClientFullName, @SerializedClientAndInspection)";
 
             conn.Execute(sql, client);
 
@@ -44,4 +32,67 @@ public class DbController(ConnectionStringStore connectionStringStore) : Control
             return BadRequest(e.Message);
         }
     }
+
+    [HttpPost]
+    public IActionResult GetClientsForUser(string userId)
+    {
+        using var conn = new SqlConnection(connectionStringStore.SqlConnectionString);
+
+        conn.Open();
+
+        const string sql = "SELECT * FROM CLIENTS WHERE UserId = @UserId";
+
+        var clients = conn.Query<ClientModel>(sql, new { UserId = userId });
+
+        return Ok(clients);
+    }
+
+    [HttpPost]
+    public IActionResult UpdateClient(ClientModel client)
+    {
+        try
+        {
+            using var conn = new SqlConnection(connectionStringStore.SqlConnectionString);
+
+            conn.Open();
+
+            client.SerializedClientAndInspection = JsonConvert.SerializeObject(client);
+
+            const string sql = @"UPDATE CLIENTS SET ClientName = @ClientFullName, SerializedClientAndInspection = @SerializedClientAndInspection WHERE UserId = @UserId AND Guid = @Guid";
+
+            conn.Execute(sql, client);
+
+            return Ok();
+        }
+        catch (Exception e)
+        {
+            return BadRequest(e.Message);
+        }
+    }
+
+    [HttpPost]
+    public IActionResult DeleteClient(string userId)
+    {
+        try
+        {
+            using var conn = new SqlConnection(connectionStringStore.SqlConnectionString);
+
+            conn.Open();
+
+            const string sql = @"DELETE FROM CLIENTS WHERE UserId = @UserId AND Guid = @Guid";
+
+            var rowsAffected = conn.Execute(sql, new { UserId = userId });
+
+            if (rowsAffected > 0)
+            {
+                return Ok();
+            }
+            return NotFound(); // Client with the specified UserId was not found
+        }
+        catch (Exception e)
+        {
+            return BadRequest(e.Message);
+        }
+    }
+
 }
