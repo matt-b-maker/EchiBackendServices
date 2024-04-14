@@ -6,6 +6,8 @@ using Dapper;
 using Newtonsoft.Json;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
+using System;
+using Microsoft.VisualBasic;
 
 namespace EchiBackendServices.Controllers;
 
@@ -16,12 +18,60 @@ public class DbController(ConnectionStringStore connectionStringStore, Applicati
     #region Client Calls
 
     [HttpPost]
-    public async Task<IActionResult> InsertClient(ClientModel client)
+    public async Task<IActionResult> InsertOrUpdateClient(ClientModel client)
+    {
+        if (client.Guid != null && ClientExists(client.Guid))
+        {
+            return await PutClient(client) ? Ok() : BadRequest();
+        }
+
+        return await PostClient(client) ? Ok() : BadRequest();
+    }
+
+    private async Task<bool> PostClient(ClientModel client)
     {
         context.Clients.Add(client);
-        await context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(InsertClient), new {id = client.Id}, client);
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (client.Guid != null && !ClientExists(client.Guid))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private async Task<bool> PutClient(ClientModel client)
+    {
+        var existingClient = await context.Clients.FirstOrDefaultAsync(c => c.Guid == client.Guid);
+
+        if (existingClient == null)
+        {
+            return false;
+        }
+
+        // Update properties except for Id
+        UpdateEntityProperties(existingClient, client);
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (client.Guid != null && !ClientExists(client.Guid))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     [HttpPost]
@@ -30,38 +80,6 @@ public class DbController(ConnectionStringStore connectionStringStore, Applicati
         return context.Clients.Where(c => c.UserId == userId).ToList();
     }
 
-    // PUT: api/clients/{guid}
-    [HttpPut("{guid}")]
-    public async Task<IActionResult> PutClient(string guid, ClientModel client)
-    {
-        if (string.IsNullOrEmpty(guid) || guid != client.Guid)
-        {
-            return BadRequest();
-        }
-
-        var existingClient = await context.Clients.FirstOrDefaultAsync(c => c.Guid == guid);
-
-        if (existingClient == null)
-        {
-            return NotFound();
-        }
-
-        context.Entry(existingClient).State = EntityState.Modified;
-
-        try
-        {
-            await context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!ClientExists(guid))
-            {
-                return NotFound();
-            }
-        }
-
-        return NoContent();
-    }
 
     // DELETE: api/clients/{guid}
     [HttpDelete("{guid}")]
@@ -186,4 +204,18 @@ public class DbController(ConnectionStringStore connectionStringStore, Applicati
     }
 
     #endregion
+
+    private void UpdateEntityProperties<TEntity>(TEntity existingEntity, TEntity updatedEntity)
+        where TEntity : class
+    {
+        var entityType = typeof(TEntity);
+        var properties = entityType.GetProperties();
+
+        foreach (var property in properties)
+        {
+            if (property.Name == "Id" || property.Name == "InspectionFullAddress" || property.Name == "ClientFullName") continue; // Exclude the Id property
+            var updatedValue = property.GetValue(updatedEntity);
+            property.SetValue(existingEntity, updatedValue);
+        }
+    }
 }
