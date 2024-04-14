@@ -2,6 +2,8 @@ using System.Data.SqlClient;
 using EchiBackendServices.Services;
 using Dapper;
 using EchiBackendServices.Models;
+using Microsoft.EntityFrameworkCore;
+using SixLabors.ImageSharp;
 
 namespace EchiBackendServices
 {
@@ -24,6 +26,10 @@ namespace EchiBackendServices
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+            builder.Services.AddDbContext<ApplicationDbContext>(options =>
+            {
+                options.UseSqlServer(sqlConnString);
+            });
 
             var app = builder.Build();
 
