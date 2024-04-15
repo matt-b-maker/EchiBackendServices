@@ -138,7 +138,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         }
     }
 
-    private async Task AddImageToDocumentAsync(Document inspectionAgreementDocument, string imageUrl)
+    private async Task AddImageToDocumentAsync(Xceed.Document.NET.Document inspectionAgreementDocument, string imageUrl)
     {
         try
         {
