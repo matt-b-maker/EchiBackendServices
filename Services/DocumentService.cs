@@ -12,6 +12,7 @@ using Color = System.Drawing.Color;
 using Container = Xceed.Document.NET.Container;
 using Formatting = Xceed.Document.NET.Formatting;
 using Image = SixLabors.ImageSharp.Image;
+using System.Reflection.Metadata;
 
 namespace EchiBackendServices.Services;
 
@@ -109,6 +110,16 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
                     }
                 }
             }
+
+            // Find the last paragraph
+            var lastParagraphIndex =
+                inspectionAgreementDocument.Paragraphs.IndexOf(inspectionAgreementDocument.Paragraphs.LastOrDefault());
+
+            // Insert an empty paragraph with multiple newline characters before the last paragraph
+            inspectionAgreementDocument.InsertParagraph(lastParagraphIndex-1, "\n\n\n", false);
+
+            // Save the modified document
+            inspectionAgreementDocument.SaveAs("path_to_modified_document.docx");
 
             //await AddImageToDocumentAsync(inspectionAgreementDocument, @"https://echifilestorage.blob.core.windows.net/echiphotos/Bathroom 1 b639554a-c715-4084-91d6-8079fb78925a");
 
