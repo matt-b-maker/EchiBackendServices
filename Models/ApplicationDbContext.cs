@@ -13,11 +13,11 @@ public class ApplicationDbContext : DbContext
     public DbSet<Agency> Agencies { get; set; }
     // Other DbSets for your entities
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        modelBuilder.Entity<ClientModel>()
-            .HasKey(p => p.Id); // Configure Id as primary key  
-        modelBuilder.Entity<Agency>().HasKey(p => p.Id);
-        modelBuilder.Entity<Agent>().HasKey(p => p.Id);
-    }
+    //protected override void OnModelCreating(ModelBuilder modelBuilder)
+    //{
+    //    modelBuilder.Entity<ClientModel>()
+    //        .HasKey(p => p.Id); // Configure Id as primary key  
+    //    modelBuilder.Entity<Agency>().HasKey(p => p.Id);
+    //    modelBuilder.Entity<Agent>().HasKey(p => p.Id);
+    //}
 }

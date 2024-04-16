@@ -1,9 +1,6 @@
 ﻿using EchiBackendServices.Models;
-using System.ComponentModel;
-using System.Drawing;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using System.Xml;
 using Xceed.Document.NET;
 using Xceed.Words.NET;
 using SixLabors.ImageSharp;
@@ -12,7 +9,6 @@ using Color = System.Drawing.Color;
 using Container = Xceed.Document.NET.Container;
 using Formatting = Xceed.Document.NET.Formatting;
 using Image = SixLabors.ImageSharp.Image;
-using System.Reflection.Metadata;
 
 namespace EchiBackendServices.Services;
 
@@ -26,6 +22,8 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
 
     public string RadonAddendumFilePath { get; set; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Radon Addendum.docx");
+
+    private static Dictionary<string, string> _replacePatterns;
 
 
     //TODO for inspection report
@@ -47,6 +45,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
                 "EchiBackendServices.Resources.Documents.Inspection Agreement Template.docx";
             await using var inspectionAgreementTemplateStream = Assembly.GetExecutingAssembly()
                 .GetManifestResourceStream(inspectionAgreementTemplateResourceName);
+            if (File.Exists(InspectionAgreementFilePath)) File.Delete(InspectionAgreementFilePath);
             await using var inspectionAgreementTemplateFileStream = File.Create(InspectionAgreementFilePath);
             await inspectionAgreementTemplateStream?.CopyToAsync(inspectionAgreementTemplateFileStream)!;
             inspectionAgreementTemplateStream.Close();
@@ -55,10 +54,27 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
             // Replace the placeholder text with the current date   
             var currentDate = DateTime.Today.ToString("M/d/yyyy");
 
+            _replacePatterns = new Dictionary<string, string>()
+            {
+                {"This agreement dated _____.", $"This agreement dated {currentDate}."},
+                {"{today’s date}", $" {currentDate}"},
+                {"Client: __________________", $"Client: {client.ClientFirstName} {client.ClientLastName}"},
+                {"{name}", $"{client.ClientFirstName} {client.ClientLastName}"},
+                {"(Address 1}", client.ClientAddressLineOne},
+                {"{address 2}", client.ClientAddressLineTwo},
+                {"{City, state zip}", $"{client.ClientAddressCity}, {client.ClientAddressState} {client.ClientAddressZipCode}"},
+                {"{phone}", client.ClientPhoneNumber},
+                {"{Email}", client.ClientEmailAddress},
+                {"{Inspection address 1}", client.InspectionAddressLineOne},
+                {"{Inspection address 2}", client.InspectionAddressLineTwo},
+                {"{inspection city, state zip}", $"{client.InspectionAddressCity}, {client.InspectionAddressState} {client.InspectionAddressZipCode}"},
+                {"{Inspection Fee}", client.Fee}
+            };
+
             // Load the DOCX document using Xceed DocX
             using var inspectionAgreementDocument = DocX.Load(InspectionAgreementFilePath);
 
-            inspectionAgreementDocument.ReplaceText("This agreement dated ______.", $"This agreement dated {currentDate}.");
+            inspectionAgreementDocument.ReplaceText("This agreement dated ______", $"This agreement dated {currentDate}");
             inspectionAgreementDocument.ReplaceText("{today’s date}", $" {currentDate}");
             inspectionAgreementDocument.ReplaceText("Client: __________________", $"Client: {client.ClientFirstName} {client.ClientLastName}");
             if (!string.IsNullOrEmpty(client.ClientFirstName) || !string.IsNullOrEmpty(client.ClientLastName))
@@ -87,41 +103,45 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
                 inspectionAgreementDocument.ReplaceText("{inspection city, state zip}",
                     $"{client.InspectionAddressCity}, {client.InspectionAddressState} {client.InspectionAddressZipCode}");
 
-            if (!string.IsNullOrEmpty(client.Fee)) inspectionAgreementDocument.ReplaceText("{Inspection Fee}", client.Fee);
+            if (!string.IsNullOrEmpty(client.Fee)) inspectionAgreementDocument.ReplaceText("{Inspection Fee}", $"${client.Fee}");
 
+            //if (inspectionAgreementDocument.Text.Contains("{inspection city, state zip}"))
+            //{
+            //    Console.WriteLine("");
+            //}
 
-            //ReplaceLastDatedInInspectionAgreement(inspectionAgreementDocument, currentDate);
+            //var stringsToRemove = GetListOfStringsToRemove(client);
+            //var strToRemoves = stringsToRemove as string[] ?? stringsToRemove.ToArray();
+            //if (strToRemoves.Any())
+            //{
+            //    //example of removing a paragraph
+            //    for (var i = inspectionAgreementDocument.Paragraphs.Count - 1; i >= 0; i--)
+            //    {
+            //        var paragraph = inspectionAgreementDocument.Paragraphs[i];
+            //        foreach (var strToRemove in strToRemoves)
+            //        {
+            //            if (paragraph.Text.Contains(strToRemove))
+            //            {
+            //                paragraph.Remove(false);
+            //                break; // No need to continue checking once a match is found
+            //            }
+            //        }
+            //    }
+            //}
 
-            var stringsToRemove = GetListOfStringsToRemove(client);
-            var strToRemoves = stringsToRemove as string[] ?? stringsToRemove.ToArray();
-            if (strToRemoves.Any())
-            {
-                //example of removing a paragraph
-                for (var i = inspectionAgreementDocument.Paragraphs.Count - 1; i >= 0; i--)
-                {
-                    var paragraph = inspectionAgreementDocument.Paragraphs[i];
-                    foreach (var strToRemove in strToRemoves)
-                    {
-                        if (paragraph.Text.Contains(strToRemove))
-                        {
-                            paragraph.Remove(false);
-                            break; // No need to continue checking once a match is found
-                        }
-                    }
-                }
-            }
-
-            // Find the last paragraph
-            var lastParagraphIndex =
-                inspectionAgreementDocument.Paragraphs.IndexOf(inspectionAgreementDocument.Paragraphs.LastOrDefault());
-
-            // Insert an empty paragraph with multiple newline characters before the last paragraph
-            inspectionAgreementDocument.InsertParagraph(lastParagraphIndex-1, "\n\n\n", false);
-
-            // Save the modified document
-            inspectionAgreementDocument.SaveAs("path_to_modified_document.docx");
+            //// Do the replacement of all the found tags and with green bold strings.
+            //var replaceTextOptions = new FunctionReplaceTextOptions()
+            //{
+            //    FindPattern = "<(.*?)>",
+            //    RegexMatchHandler = ReplaceFunc,
+            //    RegExOptions = RegexOptions.IgnoreCase,
+            //    NewFormatting = new Formatting() { Bold = true, FontColor = System.Drawing.Color.Green }
+            //};
+            //inspectionAgreementDocument.ReplaceText(replaceTextOptions);
 
             //await AddImageToDocumentAsync(inspectionAgreementDocument, @"https://echifilestorage.blob.core.windows.net/echiphotos/Bathroom 1 b639554a-c715-4084-91d6-8079fb78925a");
+
+            var text = inspectionAgreementDocument.Text;
 
             inspectionAgreementDocument.Save();
 
@@ -136,6 +156,58 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         {
             return e.Message;
         }
+    }
+
+    public async Task<string> CreateRadonAddendum(ClientModel client)
+    {
+        const string radonAddendumTemplateResourceName =
+            "EchiBackendServices.Resources.Documents.Radon Addendum Template.docx";
+
+        Directory.CreateDirectory(DocumentsDirectory); // Create directory if it doesn't exist
+
+        // Save the embedded DOCX resource to the file system
+
+        // Read the embedded resource stream for DOCX
+        await using var radonAddendumTemplateStream =
+            Assembly.GetExecutingAssembly().GetManifestResourceStream(radonAddendumTemplateResourceName);
+        if (File.Exists(RadonAddendumFilePath)) File.Delete(RadonAddendumFilePath);
+        await using var radonAddendumTemplateFileStream = File.Create(RadonAddendumFilePath);
+        await radonAddendumTemplateStream?.CopyToAsync(radonAddendumTemplateFileStream)!;
+        radonAddendumTemplateStream.Close();
+        radonAddendumTemplateFileStream.Close();
+
+        // Replace the placeholder text with the current date
+        var currentDate = DateTime.Today.ToString("M/d/yyyy");
+
+        //// Load the DOCX document using Xceed DocX
+        using var radonDocument = DocX.Load(RadonAddendumFilePath);
+        //using var inspectionAgreementDocument = DocX.Load(InspectionAgreementFilePath);
+
+        radonDocument.ReplaceText("dated _____________", $"dated {currentDate}");
+        radonDocument.ReplaceText("$________", $"{client.RadonFee}");
+        radonDocument.ReplaceText("Client:", $"Client: {client.ClientFirstName} {client.ClientLastName}");
+
+        //find the second paragraph with instance of Dated: and replace it with the current date
+        var datedParagraph = radonDocument.Paragraphs.LastOrDefault(p => p.Text.Contains("Dated:"));
+
+        if (datedParagraph != null)
+        {
+            datedParagraph.ReplaceText("Dated:", $"Dated: {currentDate}");
+        }
+
+        radonDocument.Save();
+
+        // Get the stream from the file path
+        await using var fileStream = new FileStream(RadonAddendumFilePath, FileMode.Open, FileAccess.Read);
+
+        // Pass the stream to your method
+        return await azureBlobStorageService.UploadFileToAzureStorage(fileStream, "echidocs",
+            $"{client.ClientFirstName} {client.ClientLastName} {client.InspectionAddressLineOne} Radon Addendum {Guid.NewGuid()}.docx");
+    }
+
+    private static string ReplaceFunc(string findStr)
+    {
+        return _replacePatterns.GetValueOrDefault(findStr, findStr);
     }
 
     private async Task AddImageToDocumentAsync(Xceed.Document.NET.Document inspectionAgreementDocument, string imageUrl)
@@ -182,52 +254,6 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         }
     }
 
-    public async Task<string> CreateRadonAddendum(ClientModel client)
-    {
-        const string radonAddendumTemplateResourceName =
-            "EchiBackendServices.Resources.Documents.Radon Addendum Template.docx";
-
-        Directory.CreateDirectory(DocumentsDirectory); // Create directory if it doesn't exist
-
-        // Save the embedded DOCX resource to the file system
-
-        // Read the embedded resource stream for DOCX
-        await using var radonAddendumTemplateStream =
-            Assembly.GetExecutingAssembly().GetManifestResourceStream(radonAddendumTemplateResourceName);
-        await using var radonAddendumTemplateFileStream = File.Create(RadonAddendumFilePath);
-        await radonAddendumTemplateStream?.CopyToAsync(radonAddendumTemplateFileStream)!;
-        radonAddendumTemplateStream.Close();
-        radonAddendumTemplateFileStream.Close();
-
-        // Replace the placeholder text with the current date
-        var currentDate = DateTime.Today.ToString("M/d/yyyy");
-
-        //// Load the DOCX document using Xceed DocX
-        using var radonDocument = DocX.Load(RadonAddendumFilePath);
-        //using var inspectionAgreementDocument = DocX.Load(InspectionAgreementFilePath);
-
-        radonDocument.ReplaceText("dated _____________", $"dated {currentDate}");
-        radonDocument.ReplaceText("$________", $"{client.RadonFee}");
-        radonDocument.ReplaceText("Client:", $"Client: {client.ClientFirstName} {client.ClientLastName}");
-
-        //find the second paragraph with instance of Dated: and replace it with the current date
-        var datedParagraph = radonDocument.Paragraphs.LastOrDefault(p => p.Text.Contains("Dated:"));
-
-        if (datedParagraph != null)
-        {
-            datedParagraph.ReplaceText("Dated:", $"Dated: {currentDate}");
-        }
-
-        radonDocument.Save();
-
-        // Get the stream from the file path
-        await using var fileStream = new FileStream(RadonAddendumFilePath, FileMode.Open, FileAccess.Read);
-
-        // Pass the stream to your method
-        return await azureBlobStorageService.UploadFileToAzureStorage(fileStream, "echidocs",
-            $"{client.ClientFirstName} {client.ClientLastName} {client.InspectionAddressLineOne} Radon Addendum {Guid.NewGuid()}.docx");
-    }
-
     private void ReplaceLastDatedInInspectionAgreement(Container doc, string currentDate)
     {
         // Iterate through paragraphs in reverse order
@@ -265,39 +291,5 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         if (string.IsNullOrEmpty(client.Fee)) listOfStrings.Add("{Inspection Fee}");
 
         return listOfStrings;
-    }
-}
-
-internal class DocxTextReplacer
-{
-    public static void ReplaceTextInDocx(Stream inputStream, string outputFilePath,
-        Dictionary<string, string> replacementPatterns)
-    {
-        using var document = DocX.Load(inputStream);
-        if (replacementPatterns.Count <= 0) return;
-        ReplaceText(document, replacementPatterns);
-        document.SaveAs(outputFilePath);
-    }
-
-    private static void ReplaceText(DocX document, Dictionary<string, string> replacementPatterns)
-    {
-        const string findPattern = "<(.*?)>";
-        const RegexOptions regexOptions = RegexOptions.IgnoreCase;
-        var newFormatting = new Formatting { Bold = true, FontColor = System.Drawing.Color.Green };
-
-        var replaceTextOptions = new FunctionReplaceTextOptions
-        {
-            FindPattern = findPattern,
-            RegexMatchHandler = (findStr) => ReplaceFunc(findStr, replacementPatterns),
-            RegExOptions = regexOptions,
-            NewFormatting = newFormatting
-        };
-
-        document.ReplaceText(replaceTextOptions);
-    }
-
-    private static string ReplaceFunc(string findStr, IReadOnlyDictionary<string, string> replacementPatterns)
-    {
-        return replacementPatterns.GetValueOrDefault(findStr, findStr);
     }
 }
