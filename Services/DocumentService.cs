@@ -110,24 +110,24 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
             //    Console.WriteLine("");
             //}
 
-            //var stringsToRemove = GetListOfStringsToRemove(client);
-            //var strToRemoves = stringsToRemove as string[] ?? stringsToRemove.ToArray();
-            //if (strToRemoves.Any())
-            //{
-            //    //example of removing a paragraph
-            //    for (var i = inspectionAgreementDocument.Paragraphs.Count - 1; i >= 0; i--)
-            //    {
-            //        var paragraph = inspectionAgreementDocument.Paragraphs[i];
-            //        foreach (var strToRemove in strToRemoves)
-            //        {
-            //            if (paragraph.Text.Contains(strToRemove))
-            //            {
-            //                paragraph.Remove(false);
-            //                break; // No need to continue checking once a match is found
-            //            }
-            //        }
-            //    }
-            //}
+            var stringsToRemove = GetListOfStringsToRemove(client);
+            var strToRemoves = stringsToRemove as string[] ?? stringsToRemove.ToArray();
+            if (strToRemoves.Any())
+            {
+                //example of removing a paragraph
+                for (var i = inspectionAgreementDocument.Paragraphs.Count - 1; i >= 0; i--)
+                {
+                    var paragraph = inspectionAgreementDocument.Paragraphs[i];
+                    foreach (var strToRemove in strToRemoves)
+                    {
+                        if (paragraph.Text.Contains(strToRemove))
+                        {
+                            paragraph.Remove(false);
+                            break; // No need to continue checking once a match is found
+                        }
+                    }
+                }
+            }
 
             //// Do the replacement of all the found tags and with green bold strings.
             //var replaceTextOptions = new FunctionReplaceTextOptions()
@@ -141,7 +141,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
 
             //await AddImageToDocumentAsync(inspectionAgreementDocument, @"https://echifilestorage.blob.core.windows.net/echiphotos/Bathroom 1 b639554a-c715-4084-91d6-8079fb78925a");
 
-            var text = inspectionAgreementDocument.Text;
+            inspectionAgreementDocument.InsertParagraph("\n\n\n\n\n\n\n");
 
             inspectionAgreementDocument.Save();
 
