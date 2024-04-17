@@ -103,7 +103,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
                 inspectionAgreementDocument.ReplaceText("{inspection city, state zip}",
                     $"{client.InspectionAddressCity}, {client.InspectionAddressState} {client.InspectionAddressZipCode}");
 
-            if (!string.IsNullOrEmpty(client.Fee)) inspectionAgreementDocument.ReplaceText("{Inspection Fee}", $"${client.Fee}");
+            if (!string.IsNullOrEmpty(client.Fee)) inspectionAgreementDocument.ReplaceText("{Inspection Fee}", $"${client.Fee.Trim('$')}");
 
             //if (inspectionAgreementDocument.Text.Contains("{inspection city, state zip}"))
             //{
