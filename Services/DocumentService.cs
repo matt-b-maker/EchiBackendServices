@@ -23,6 +23,9 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
     public string RadonAddendumFilePath { get; set; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Radon Addendum.docx");
 
+    public string InspectionReportFilePath { get; set; } =
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Inspection Report.docx");
+
     private static Dictionary<string, string> _replacePatterns;
 
 
@@ -203,6 +206,47 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         // Pass the stream to your method
         return await azureBlobStorageService.UploadFileToAzureStorage(fileStream, "echidocs",
             $"{client.ClientFirstName} {client.ClientLastName} {client.InspectionAddressLineOne} Radon Addendum {Guid.NewGuid()}.docx");
+    }
+
+    public async Task<string> CreateInspectionReport(ClientModel client, List<DocumentTextLineModel> inspectionReportLines)
+    {
+        Directory.CreateDirectory(DocumentsDirectory); // Create directory if it doesn't exist
+
+        // Read the embedded resource stream for DOCX and Save the embedded DOCX resource to the file system
+        const string inspectionReportTemplateResourceName =
+            "EchiBackendServices.Resources.Documents.Inspection Report Template.docx";
+        await using var inspectionReportTemplateStream = Assembly.GetExecutingAssembly()
+            .GetManifestResourceStream(inspectionReportTemplateResourceName);
+        if (File.Exists(InspectionReportFilePath)) File.Delete(InspectionReportFilePath);
+        await using var inspectionReportTemplateFileStream = File.Create(InspectionReportFilePath);
+        await inspectionReportTemplateStream?.CopyToAsync(inspectionReportTemplateFileStream)!;
+        inspectionReportTemplateStream.Close();
+        inspectionReportTemplateFileStream.Close();
+
+        // Load the DOCX document using Xceed DocX
+        using var inspectionReportDocument = DocX.Load(InspectionReportFilePath);
+
+        var groundsLines = inspectionReportLines.Where(l => l.SectionName == InspectionSections.GroundsSection).ToList();
+
+        var groundsParagraph = inspectionReportDocument.Paragraphs.FirstOrDefault(p => p.Text.Contains(InspectionSections.GroundsSection));
+
+        if (groundsParagraph != null)
+        {
+            foreach (var line in groundsLines)
+            {
+                groundsParagraph.InsertText(line.LineText, false, new Formatting() { Bold = true, FontColor = line.Color });
+                groundsParagraph.InsertText("\n", false, new Formatting() { Bold = true, FontColor = line.Color });
+            }
+        }
+
+        inspectionReportDocument.Save();
+
+        // Get the stream from the file path
+        await using var fileStream = new FileStream(InspectionReportFilePath, FileMode.Open, FileAccess.Read);
+
+        // Pass the stream to your method
+        return await azureBlobStorageService.UploadFileToAzureStorage(fileStream, "echidocs",
+            $"{client.ClientFirstName} {client.ClientLastName} {client.InspectionAddressLineOne} Inspection Report {Guid.NewGuid()}.docx");
     }
 
     private static string ReplaceFunc(string findStr)

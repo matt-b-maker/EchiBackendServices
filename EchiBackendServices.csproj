@@ -8,7 +8,12 @@
 
   <ItemGroup>
     <None Remove="Resources\Documents\Inspection Agreement Template.docx" />
+    <None Remove="Resources\Documents\Inspection Report Template.docx" />
     <None Remove="Resources\Documents\Radon Addendum Template.docx" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Documents\Inspection Report Template.docx" />
   </ItemGroup>
 
   <ItemGroup>
