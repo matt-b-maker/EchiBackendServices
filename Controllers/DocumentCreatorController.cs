@@ -34,12 +34,18 @@ namespace EchiBackendServices.Controllers
         {
             try
             {
-                return Ok(new object[] {inspectionReportModel.InspectionReportLines, inspectionReportModel.Client});
+                if (inspectionReportModel is {InspectionReportLines: not null, Client: not null})
+                {
+                    var reportUrl = await documentService.CreateInspectionReport(inspectionReportModel.Client,
+                        inspectionReportModel.InspectionReportLines);
+                    return Ok(reportUrl);
+                }
             }
             catch (Exception e)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
             }
+            return StatusCode(StatusCodes.Status400BadRequest);
         }
     }
 }

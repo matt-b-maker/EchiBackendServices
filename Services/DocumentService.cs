@@ -1,5 +1,6 @@
 ﻿using EchiBackendServices.Models;
 using System.Reflection;
+using System.Runtime.InteropServices.JavaScript;
 using System.Text.RegularExpressions;
 using Xceed.Document.NET;
 using Xceed.Words.NET;
@@ -226,12 +227,41 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         // Load the DOCX document using Xceed DocX
         using var inspectionReportDocument = DocX.Load(InspectionReportFilePath);
 
+        //Fill in client info
+        inspectionReportDocument.ReplaceText("{Name}", $"{client.ClientFirstName} {client.ClientLastName}");
+        inspectionReportDocument.ReplaceText("{ClientAddressLine1}", $"{client.ClientAddressLineOne}");
+        inspectionReportDocument.ReplaceText("{ClientAddressLine2}",
+            !string.IsNullOrEmpty(client.ClientAddressLineTwo) ? $"{client.ClientAddressLineTwo}" : string.Empty);
+        inspectionReportDocument.ReplaceText("{Client City State ZIP}", $"{client.ClientAddressCity}, {client.ClientAddressState} {client.ClientAddressZipCode}");
+        inspectionReportDocument.ReplaceText("{Client Phone}", $"{client.ClientPhoneNumber}");
+        inspectionReportDocument.ReplaceText("{Client Email}", $"{client.ClientEmailAddress}");
+        // replace {Today’s Date} with today's date
+        inspectionReportDocument.ReplaceText("{Today’s Date}", $"{DateTime.Today:MM/dd/yyyy}");
+        
+        //fill in inspection address info
+        inspectionReportDocument.ReplaceText("{InspectionAddressLine1}", $"{client.InspectionAddressLineOne}");
+        inspectionReportDocument.ReplaceText("{InspectionAddressLine2}",
+                       !string.IsNullOrEmpty(client.InspectionAddressLineTwo) ? $"{client.InspectionAddressLineTwo}" : string.Empty);
+        inspectionReportDocument.ReplaceText("{Inspection City State ZIP}", $"{client.InspectionAddressCity}, {client.InspectionAddressState} {client.InspectionAddressZipCode}");
+
+        inspectionReportDocument.ReplaceText("{Selling Agent}", $"{client.AgentName}");
+
+        //replace text {inspection image} with image from url
+        var inspectionImageParagraph = inspectionReportDocument.Paragraphs.FirstOrDefault(p => p.Text.Contains("{inspection image}"));
+        if (inspectionImageParagraph != null)
+        {
+            var imageUrl = @"https://echifilestorage.blob.core.windows.net/echiphotos/Bathroom 1 b639554a-c715-4084-91d6-8079fb78925a";
+            await AddImageToDocumentAsync(inspectionReportDocument, imageUrl, inspectionReportDocument.Paragraphs.IndexOf(inspectionImageParagraph), 0.9f, true);
+            inspectionImageParagraph.Remove(false);
+        }
+
         var groundsLines = inspectionReportLines.Where(l => l.SectionName == InspectionSections.GroundsSection).ToList();
 
         var groundsParagraph = inspectionReportDocument.Paragraphs.FirstOrDefault(p => p.Text.Contains(InspectionSections.GroundsSection));
 
         if (groundsParagraph != null)
         {
+            inspectionReportDocument.ReplaceText("{grading}", string.Empty);
             foreach (var line in groundsLines)
             {
                 groundsParagraph.InsertText(line.LineText, false, new Formatting() { Bold = true, FontColor = line.Color });
@@ -254,7 +284,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         return _replacePatterns.GetValueOrDefault(findStr, findStr);
     }
 
-    private async Task AddImageToDocumentAsync(Xceed.Document.NET.Document inspectionAgreementDocument, string imageUrl)
+    private async Task AddImageToDocumentAsync(Document inspectionAgreementDocument, string imageUrl, int paragraphIndex, float imageWidth = 0.5f, bool centerImage = false)
     {
         try
         {
@@ -271,7 +301,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
             // Calculate the desired width based on half of the page width
             // Adjust this calculation as needed based on your document layout
             var pageWidth = inspectionAgreementDocument.PageWidth;
-            var desiredWidth = pageWidth * 0.5f; // Set the image width to half the page width
+            var desiredWidth = pageWidth * imageWidth; // Set the image width to half the page width
 
             // Calculate the scaled height to maintain aspect ratio
             var aspectRatio = image.Width / (float)image.Height;
@@ -285,10 +315,16 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
             image.SaveAsJpeg(resizedImageStream); // Save as JPEG format or other desired format
 
             // Add the resized image stream to the document
-            var newParagraph = inspectionAgreementDocument.InsertParagraph();
+            var newParagraph = inspectionAgreementDocument.InsertParagraph(paragraphIndex, "", false);
             var resizedImage = inspectionAgreementDocument.AddImage(resizedImageStream);
             var picture = resizedImage.CreatePicture();
             newParagraph.AppendPicture(picture);
+
+            // Optionally center the image
+            if (centerImage)
+            {
+                newParagraph.Alignment = Alignment.center;
+            }
         }
         catch (Exception ex)
         {
