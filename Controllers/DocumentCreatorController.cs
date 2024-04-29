@@ -2,6 +2,7 @@
 using EchiBackendServices.Models;
 using EchiBackendServices.Services;
 using Microsoft.AspNetCore.Mvc;
+using SixLabors.ImageSharp;
 
 namespace EchiBackendServices.Controllers
 {

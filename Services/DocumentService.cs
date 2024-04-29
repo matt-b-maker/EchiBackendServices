@@ -251,30 +251,62 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         if (inspectionImageParagraph != null)
         {
             var imageUrl = @"https://echifilestorage.blob.core.windows.net/echiphotos/Bathroom 1 b639554a-c715-4084-91d6-8079fb78925a";
-            await AddImageToDocumentAsync(inspectionReportDocument, imageUrl, inspectionReportDocument.Paragraphs.IndexOf(inspectionImageParagraph), 0.9f, true);
+            await AddImageToDocumentAsync(inspectionReportDocument, imageUrl, inspectionReportDocument.Paragraphs.IndexOf(inspectionImageParagraph), 0.6f, true);
             inspectionImageParagraph.Remove(false);
         }
 
-        var groundsLines = inspectionReportLines.Where(l => l.SectionName == InspectionSections.GroundsSection).ToList();
+        //Grounds Section
+        AddLinesToReport(inspectionReportLines, InspectionSections.GroundsSection, inspectionReportDocument, "{grounds}");
 
-        var groundsParagraph = inspectionReportDocument.Paragraphs.FirstOrDefault(p => p.Text.Contains(InspectionSections.GroundsSection));
+        //Exterior Walls Section
+        AddLinesToReport(inspectionReportLines, InspectionSections.ExteriorWallsSection, inspectionReportDocument, "{exterior walls}");
 
-        if (groundsParagraph != null)
-        {
-            inspectionReportDocument.ReplaceText("{grading}", string.Empty);
-            foreach (var line in groundsLines)
-            {
-                groundsParagraph.InsertText(line.LineText, false, new Formatting() { Bold = true, FontColor = line.Color });
-                groundsParagraph.InsertText("\n", false, new Formatting() { Bold = true, FontColor = line.Color });
-            }
-        }
+        //Roofing Section
+        AddLinesToReport(inspectionReportLines, InspectionSections.RoofingSection, inspectionReportDocument, "{roofing}");
 
+        //Windows and Doors Section
+        AddLinesToReport(inspectionReportLines, InspectionSections.WindowsAndDoorsSection, inspectionReportDocument, "{windows and doors}");
+
+        //Attic Space Section
+        AddLinesToReport(inspectionReportLines, InspectionSections.AtticSpaceSection, inspectionReportDocument, "{attic space}");
+
+        //Interior W/C/F Section
+        AddLinesToReport(inspectionReportLines, InspectionSections.InteriorWcfSection, inspectionReportDocument, "{interior w/c/f}");
+
+        //Heating Section
+        AddLinesToReport(inspectionReportLines, InspectionSections.HeatingSection, inspectionReportDocument, "{heating}");
+
+        //Electric Section
+        AddLinesToReport(inspectionReportLines, InspectionSections.ElectricSection, inspectionReportDocument, "{electric}");
+
+        //Plumbing Section
+        AddLinesToReport(inspectionReportLines, InspectionSections.PlumbingSection, inspectionReportDocument, "{plumbing}");
+
+        //Kitchen Section
+        AddLinesToReport(inspectionReportLines, InspectionSections.KitchenSection, inspectionReportDocument, "{kitchen}");
+
+        //Bathrooms Section
+        AddLinesToReport(inspectionReportLines, InspectionSections.BathroomsSection, inspectionReportDocument, "{bathrooms}");
+
+        //Laundry Section
+        AddLinesToReport(inspectionReportLines, InspectionSections.LaundrySection, inspectionReportDocument, "{laundry}");
+
+        //Garage Section
+        AddLinesToReport(inspectionReportLines, InspectionSections.GarageSection, inspectionReportDocument, "{garage}");
+
+        //Outdoor Living Space Section
+        AddLinesToReport(inspectionReportLines, InspectionSections.OutdoorLivingSpaceSection, inspectionReportDocument, "{outdoor living space}");
+
+        //Additional Comments Section
+        AddLinesToReport(inspectionReportLines, InspectionSections.AdditionalCommentsSection, inspectionReportDocument, "{additional comments}");
+
+        // Save the document
         inspectionReportDocument.Save();
 
         // Get the stream from the file path
         await using var fileStream = new FileStream(InspectionReportFilePath, FileMode.Open, FileAccess.Read);
 
-        // Pass the stream to your method
+        // Upload file to Azure Blob Storage and return the URL
         return await azureBlobStorageService.UploadFileToAzureStorage(fileStream, "echidocs",
             $"{client.ClientFirstName} {client.ClientLastName} {client.InspectionAddressLineOne} Inspection Report {Guid.NewGuid()}.docx");
     }
@@ -282,6 +314,20 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
     private static string ReplaceFunc(string findStr)
     {
         return _replacePatterns.GetValueOrDefault(findStr, findStr);
+    }
+
+    public void AddLinesToReport(List<DocumentTextLineModel> inspectionReportLines, string section, Document inspectionReportDocument, string replaceString)
+    {
+        var sectionLines = inspectionReportLines.Where(l => l.SectionName == section).ToList();
+
+        var targetParagraph = inspectionReportDocument.Paragraphs.FirstOrDefault(p => p.Text.Contains(replaceString));
+
+        foreach (var line in sectionLines)
+        {
+            targetParagraph?.InsertText(line.LineText + "\n", false, new Formatting() { FontColor = line.Color ?? Color.Black});
+        }
+
+        inspectionReportDocument.ReplaceText(replaceString, "");
     }
 
     private async Task AddImageToDocumentAsync(Document inspectionAgreementDocument, string imageUrl, int paragraphIndex, float imageWidth = 0.5f, bool centerImage = false)
