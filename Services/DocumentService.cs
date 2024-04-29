@@ -1,5 +1,6 @@
 ﻿using EchiBackendServices.Models;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices.JavaScript;
 using System.Text.RegularExpressions;
 using Xceed.Document.NET;
@@ -209,7 +210,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
             $"{client.ClientFirstName} {client.ClientLastName} {client.InspectionAddressLineOne} Radon Addendum {Guid.NewGuid()}.docx");
     }
 
-    public async Task<string> CreateInspectionReport(ClientModel client, List<DocumentTextLineModel> inspectionReportLines)
+    public async Task<string> CreateInspectionReport(ClientModel client, List<DocumentTextLineModel> inspectionReportLines, List<DocumentImageModel>? images)
     {
         Directory.CreateDirectory(DocumentsDirectory); // Create directory if it doesn't exist
 
@@ -256,49 +257,49 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         }
 
         //Grounds Section
-        AddLinesToReport(inspectionReportLines, InspectionSections.GroundsSection, inspectionReportDocument, "{grounds}");
+        AddLinesToReport(inspectionReportLines, images, InspectionSections.GroundsSection, inspectionReportDocument, "{grounds}");
 
         //Exterior Walls Section
-        AddLinesToReport(inspectionReportLines, InspectionSections.ExteriorWallsSection, inspectionReportDocument, "{exterior walls}");
+        AddLinesToReport(inspectionReportLines, images, InspectionSections.ExteriorWallsSection, inspectionReportDocument, "{exterior walls}");
 
         //Roofing Section
-        AddLinesToReport(inspectionReportLines, InspectionSections.RoofingSection, inspectionReportDocument, "{roofing}");
+        AddLinesToReport(inspectionReportLines, images, InspectionSections.RoofingSection, inspectionReportDocument, "{roofing}");
 
         //Windows and Doors Section
-        AddLinesToReport(inspectionReportLines, InspectionSections.WindowsAndDoorsSection, inspectionReportDocument, "{windows and doors}");
+        AddLinesToReport(inspectionReportLines, images, InspectionSections.WindowsAndDoorsSection, inspectionReportDocument, "{windows and doors}");
 
         //Attic Space Section
-        AddLinesToReport(inspectionReportLines, InspectionSections.AtticSpaceSection, inspectionReportDocument, "{attic space}");
+        AddLinesToReport(inspectionReportLines, images, InspectionSections.AtticSpaceSection, inspectionReportDocument, "{attic space}");
 
         //Interior W/C/F Section
-        AddLinesToReport(inspectionReportLines, InspectionSections.InteriorWcfSection, inspectionReportDocument, "{interior w/c/f}");
+        AddLinesToReport(inspectionReportLines, images, InspectionSections.InteriorWcfSection, inspectionReportDocument, "{interior w/c/f}");
 
         //Heating Section
-        AddLinesToReport(inspectionReportLines, InspectionSections.HeatingSection, inspectionReportDocument, "{heating}");
+        AddLinesToReport(inspectionReportLines, images, InspectionSections.HeatingSection, inspectionReportDocument, "{heating}");
 
         //Electric Section
-        AddLinesToReport(inspectionReportLines, InspectionSections.ElectricSection, inspectionReportDocument, "{electric}");
+        AddLinesToReport(inspectionReportLines, images, InspectionSections.ElectricSection, inspectionReportDocument, "{electric}");
 
         //Plumbing Section
-        AddLinesToReport(inspectionReportLines, InspectionSections.PlumbingSection, inspectionReportDocument, "{plumbing}");
+        AddLinesToReport(inspectionReportLines, images, InspectionSections.PlumbingSection, inspectionReportDocument, "{plumbing}");
 
         //Kitchen Section
-        AddLinesToReport(inspectionReportLines, InspectionSections.KitchenSection, inspectionReportDocument, "{kitchen}");
+        AddLinesToReport(inspectionReportLines, images, InspectionSections.KitchenSection, inspectionReportDocument, "{kitchen}");
 
         //Bathrooms Section
-        AddLinesToReport(inspectionReportLines, InspectionSections.BathroomsSection, inspectionReportDocument, "{bathrooms}");
+        AddLinesToReport(inspectionReportLines, images, InspectionSections.BathroomsSection, inspectionReportDocument, "{bathrooms}");
 
         //Laundry Section
-        AddLinesToReport(inspectionReportLines, InspectionSections.LaundrySection, inspectionReportDocument, "{laundry}");
+        AddLinesToReport(inspectionReportLines, images, InspectionSections.LaundrySection, inspectionReportDocument, "{laundry}");
 
         //Garage Section
-        AddLinesToReport(inspectionReportLines, InspectionSections.GarageSection, inspectionReportDocument, "{garage}");
+        AddLinesToReport(inspectionReportLines, images, InspectionSections.GarageSection, inspectionReportDocument, "{garage}");
 
         //Outdoor Living Space Section
-        AddLinesToReport(inspectionReportLines, InspectionSections.OutdoorLivingSpaceSection, inspectionReportDocument, "{outdoor living space}");
+        AddLinesToReport(inspectionReportLines, images, InspectionSections.OutdoorLivingSpaceSection, inspectionReportDocument, "{outdoor living space}");
 
         //Additional Comments Section
-        AddLinesToReport(inspectionReportLines, InspectionSections.AdditionalCommentsSection, inspectionReportDocument, "{additional comments}");
+        AddLinesToReport(inspectionReportLines, images, InspectionSections.AdditionalCommentsSection, inspectionReportDocument, "{additional comments}");
 
         // Save the document
         inspectionReportDocument.Save();
@@ -316,15 +317,27 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         return _replacePatterns.GetValueOrDefault(findStr, findStr);
     }
 
-    public void AddLinesToReport(List<DocumentTextLineModel> inspectionReportLines, string section, Document inspectionReportDocument, string replaceString)
+    public async void AddLinesToReport(List<DocumentTextLineModel> inspectionReportLines, List<DocumentImageModel> images, string section, Document inspectionReportDocument, string replaceString)
     {
         var sectionLines = inspectionReportLines.Where(l => l.SectionName == section).ToList();
+
+        if (sectionLines.Count == 0) return;
 
         var targetParagraph = inspectionReportDocument.Paragraphs.FirstOrDefault(p => p.Text.Contains(replaceString));
 
         foreach (var line in sectionLines)
         {
             targetParagraph?.InsertText(line.LineText + "\n", false, new Formatting() { FontColor = line.Color ?? Color.Black});
+        }
+
+        if (images.Count > 0 && images.Any(x => x.SectionName == section))
+        {
+            var sectionedImages = images.Where(i => i.SectionName == section).ToList();
+            foreach (var image in sectionedImages)
+            {
+                await AddImageToDocumentAsync(inspectionReportDocument, image.ImageUrl,
+                    inspectionReportDocument.Paragraphs.IndexOf(targetParagraph), 0.25f);
+            }
         }
 
         inspectionReportDocument.ReplaceText(replaceString, "");

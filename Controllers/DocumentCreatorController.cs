@@ -35,10 +35,13 @@ namespace EchiBackendServices.Controllers
         {
             try
             {
-                if (inspectionReportModel is {InspectionReportLines: not null, Client: not null})
+                if (inspectionReportModel is
+                    {
+                        InspectionReportLines: not null, Client: not null
+                    })
                 {
                     var reportUrl = await documentService.CreateInspectionReport(inspectionReportModel.Client,
-                        inspectionReportModel.InspectionReportLines);
+                        inspectionReportModel.InspectionReportLines, inspectionReportModel.Images);
                     return Ok(reportUrl);
                 }
             }

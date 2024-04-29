@@ -1,7 +1,7 @@
 ﻿namespace EchiBackendServices.Models;
 using Color = System.Drawing.Color;
 
-public class DocumentTextLineModel(string sectionName, string lineText, Color? color = null)
+public class DocumentTextLineModel(string sectionName, string lineText, List<string> imageUrls, Color? color = null)
 {
     public string SectionName { get; set; } = sectionName;
     public string LineText { get; set; } = lineText;
