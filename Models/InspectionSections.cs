@@ -17,4 +17,8 @@ public static class InspectionSections
     public static string PlumbingSection = "Plumbing";
     public static string RoofingSection = "Roofing";
     public static string WindowsAndDoorsSection = "Windows and Doors";
+    public static string FoundationSection = "Foundation";
+    public static string CoveredPorchesSection = "Covered Porches";
+    public static string DeckSection = "Deck";
+    public static string PatioSection = "Patio";
 }

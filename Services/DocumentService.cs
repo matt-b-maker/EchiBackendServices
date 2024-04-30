@@ -271,6 +271,9 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         //Attic Space Section
         AddLinesToReport(inspectionReportLines, images, InspectionSections.AtticSpaceSection, inspectionReportDocument, "{attic space}");
 
+        //Foundation Section
+        AddLinesToReport(inspectionReportLines, images, InspectionSections.FoundationSection, inspectionReportDocument, "{foundation}");
+
         //Interior W/C/F Section
         AddLinesToReport(inspectionReportLines, images, InspectionSections.InteriorWcfSection, inspectionReportDocument, "{interior w/c/f}");
 
