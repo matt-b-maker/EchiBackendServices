@@ -330,7 +330,9 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
 
         foreach (var line in sectionLines)
         {
-            targetParagraph?.InsertText(line.LineText + "\n", false, new Formatting() { FontColor = line.Color ?? Color.Black});
+            //translate color property to System.Drawing.Color
+            var color = Color.FromName(line.Color ?? "Black");
+            targetParagraph?.InsertText(line.LineText + "\n", false, new Formatting() { FontColor = color});
         }
 
         if (images.Count > 0 && images.Any(x => x.SectionName == section))
