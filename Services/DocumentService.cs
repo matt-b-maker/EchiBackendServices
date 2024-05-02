@@ -249,9 +249,9 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
 
         //replace text {inspection image} with image from url
         var inspectionImageParagraph = inspectionReportDocument.Paragraphs.FirstOrDefault(p => p.Text.Contains("{inspection image}"));
-        if (inspectionImageParagraph != null)
+        if (inspectionImageParagraph != null && !string.IsNullOrEmpty(client.MainInspectionImageUrl))
         {
-            var imageUrl = @"https://echifilestorage.blob.core.windows.net/echiphotos/Bathroom 1 b639554a-c715-4084-91d6-8079fb78925a";
+            var imageUrl = client.MainInspectionImageUrl;
             await AddImageToDocumentAsync(inspectionReportDocument, imageUrl, inspectionReportDocument.Paragraphs.IndexOf(inspectionImageParagraph), 0.6f, true);
             inspectionImageParagraph.Remove(false);
         }
