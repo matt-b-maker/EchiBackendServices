@@ -28,8 +28,6 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
     public string InspectionReportFilePath { get; set; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Inspection Report.docx");
 
-    private static Dictionary<string, string> _replacePatterns;
-
 
     //TODO for inspection report
     public List<Paragraph> ConclusoryStatementRunsList { get; set; } = new();
@@ -59,56 +57,114 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
             // Replace the placeholder text with the current date   
             var currentDate = DateTime.Today.ToString("M/d/yyyy");
 
-            _replacePatterns = new Dictionary<string, string>()
-            {
-                {"This agreement dated _____.", $"This agreement dated {currentDate}."},
-                {"{today’s date}", $" {currentDate}"},
-                {"Client: __________________", $"Client: {client.ClientFirstName} {client.ClientLastName}"},
-                {"{name}", $"{client.ClientFirstName} {client.ClientLastName}"},
-                {"(Address 1}", client.ClientAddressLineOne},
-                {"{address 2}", client.ClientAddressLineTwo},
-                {"{City, state zip}", $"{client.ClientAddressCity}, {client.ClientAddressState} {client.ClientAddressZipCode}"},
-                {"{phone}", client.ClientPhoneNumber},
-                {"{Email}", client.ClientEmailAddress},
-                {"{Inspection address 1}", client.InspectionAddressLineOne},
-                {"{Inspection address 2}", client.InspectionAddressLineTwo},
-                {"{inspection city, state zip}", $"{client.InspectionAddressCity}, {client.InspectionAddressState} {client.InspectionAddressZipCode}"},
-                {"{Inspection Fee}", client.Fee}
-            };
-
             // Load the DOCX document using Xceed DocX
             using var inspectionAgreementDocument = DocX.Load(InspectionAgreementFilePath);
 
-            inspectionAgreementDocument.ReplaceText("This agreement dated ______", $"This agreement dated {currentDate}");
-            inspectionAgreementDocument.ReplaceText("{today’s date}", $" {currentDate}");
-            inspectionAgreementDocument.ReplaceText("Client: __________________", $"Client: {client.ClientFirstName} {client.ClientLastName}");
+            inspectionAgreementDocument.ReplaceText(new StringReplaceTextOptions
+            {
+                SearchValue = "This agreement dated ______", 
+                NewValue = $"This agreement dated {currentDate}"
+            });
+            inspectionAgreementDocument.ReplaceText(new StringReplaceTextOptions
+            {
+                SearchValue = "{today’s date}",
+                NewValue = $" {currentDate}"
+            });
+            inspectionAgreementDocument.ReplaceText(new StringReplaceTextOptions
+            {
+                SearchValue = "Client: __________________",
+                NewValue = $"Client: {client.ClientFirstName} {client.ClientLastName}"
+            });
             if (!string.IsNullOrEmpty(client.ClientFirstName) || !string.IsNullOrEmpty(client.ClientLastName))
-                inspectionAgreementDocument.ReplaceText("{name}", $"{client.ClientFirstName} {client.ClientLastName}");
+                inspectionAgreementDocument.ReplaceText(new StringReplaceTextOptions
+                {
+                    SearchValue = "{name}",
+                    NewValue = $"{client.ClientFirstName} {client.ClientLastName}"
+                });
             if (!string.IsNullOrEmpty(client.ClientAddressLineOne))
-                inspectionAgreementDocument.ReplaceText("(Address 1}", client.ClientAddressLineOne);
+                inspectionAgreementDocument.ReplaceText(new StringReplaceTextOptions
+                {
+                    SearchValue = "(Address 1}",
+                    NewValue = client.ClientAddressLineOne
+                });
             if (!string.IsNullOrEmpty(client.ClientAddressLineTwo))
-                inspectionAgreementDocument.ReplaceText("{address 2}", client.ClientAddressLineTwo);
+                inspectionAgreementDocument.ReplaceText(new StringReplaceTextOptions
+                {
+                    SearchValue = "{address 2}",
+                    NewValue = client.ClientAddressLineTwo
+                });
             if (!string.IsNullOrEmpty(client.ClientAddressCity) ||
                 !string.IsNullOrEmpty(client.ClientAddressState) ||
                 !string.IsNullOrEmpty(client.ClientAddressZipCode))
-                inspectionAgreementDocument.ReplaceText("{City, state zip}",
-                    $"{client.ClientAddressCity}, {client.ClientAddressState} {client.ClientAddressZipCode}");
+            {
+                var replaceOptions = new StringReplaceTextOptions
+                {
+                    SearchValue = "{City, state zip}",
+                    NewValue = $"{client.ClientAddressCity}, {client.ClientAddressState} {client.ClientAddressZipCode}"
+                };
+                inspectionAgreementDocument.ReplaceText(replaceOptions);
+            }
             if (!string.IsNullOrEmpty(client.ClientPhoneNumber))
-                inspectionAgreementDocument.ReplaceText("{phone}", client.ClientPhoneNumber);
+            {
+                var replaceOptions = new StringReplaceTextOptions
+                {
+                    SearchValue = "{phone}",
+                    NewValue = client.ClientPhoneNumber
+                };
+                inspectionAgreementDocument.ReplaceText(replaceOptions);
+            }
+
             if (!string.IsNullOrEmpty(client.ClientEmailAddress))
-                inspectionAgreementDocument.ReplaceText("{Email}", client.ClientEmailAddress);
+            {
+                var replaceOptions = new StringReplaceTextOptions
+                {
+                    SearchValue = "{Email}",
+                    NewValue = client.ClientEmailAddress
+                };
+                inspectionAgreementDocument.ReplaceText(replaceOptions);
+            }
 
             if (!string.IsNullOrEmpty(client.InspectionAddressLineOne))
-                inspectionAgreementDocument.ReplaceText("{Inspection address 1}", client.InspectionAddressLineOne);
+            {
+                var replaceOptions = new StringReplaceTextOptions
+                {
+                    SearchValue = "{Inspection address 1}",
+                    NewValue = client.InspectionAddressLineOne
+                };
+                inspectionAgreementDocument.ReplaceText(replaceOptions);
+            }
+
             if (!string.IsNullOrEmpty(client.InspectionAddressLineTwo))
-                inspectionAgreementDocument.ReplaceText("{Inspection address 2}", client.InspectionAddressLineTwo);
+            {
+                var replaceOptions = new StringReplaceTextOptions
+                {
+                    SearchValue = "{Inspection address 2}",
+                    NewValue = client.InspectionAddressLineTwo
+                };
+                inspectionAgreementDocument.ReplaceText(replaceOptions);
+            }
+
             if (!string.IsNullOrEmpty(client.InspectionAddressCity) ||
                 !string.IsNullOrEmpty(client.InspectionAddressState) ||
                 !string.IsNullOrEmpty(client.InspectionAddressZipCode))
-                inspectionAgreementDocument.ReplaceText("{inspection city, state zip}",
-                    $"{client.InspectionAddressCity}, {client.InspectionAddressState} {client.InspectionAddressZipCode}");
+            {
+                var replaceOptions = new StringReplaceTextOptions
+                {
+                    SearchValue = "{inspection city, state zip}",
+                    NewValue = $"{client.InspectionAddressCity}, {client.InspectionAddressState} {client.InspectionAddressZipCode}"
+                };
+                inspectionAgreementDocument.ReplaceText(replaceOptions);
+            }
 
-            if (!string.IsNullOrEmpty(client.Fee)) inspectionAgreementDocument.ReplaceText("{Inspection Fee}", $"${client.Fee.Trim('$')}");
+            if (!string.IsNullOrEmpty(client.Fee))
+            {
+                var replaceOptions = new StringReplaceTextOptions
+                {
+                    SearchValue = "{Inspection Fee}",
+                    NewValue = $"${client.Fee.Trim('$')}"
+                };
+                inspectionAgreementDocument.ReplaceText(replaceOptions);
+            }
 
             //if (inspectionAgreementDocument.Text.Contains("{inspection city, state zip}"))
             //{
@@ -116,8 +172,8 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
             //}
 
             var stringsToRemove = GetListOfStringsToRemove(client);
-            var strToRemoves = stringsToRemove as string[] ?? stringsToRemove.ToArray();
-            if (strToRemoves.Any())
+            var strToRemoves = stringsToRemove ?? [.. stringsToRemove];
+            if (strToRemoves.Count > 0)
             {
                 //example of removing a paragraph
                 for (var i = inspectionAgreementDocument.Paragraphs.Count - 1; i >= 0; i--)
@@ -188,9 +244,23 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         using var radonDocument = DocX.Load(RadonAddendumFilePath);
         //using var inspectionAgreementDocument = DocX.Load(InspectionAgreementFilePath);
 
-        radonDocument.ReplaceText("dated _____________", $"dated {currentDate}");
-        radonDocument.ReplaceText("$________", $"{client.RadonFee}");
-        radonDocument.ReplaceText("Client:", $"Client: {client.ClientFirstName} {client.ClientLastName}");
+        radonDocument.ReplaceText(new StringReplaceTextOptions
+        {
+            SearchValue = "dated _____________",
+            NewValue = $"dated {currentDate}"
+        });
+
+        radonDocument.ReplaceText(new StringReplaceTextOptions
+        {
+            SearchValue = "$________",
+            NewValue = $"{client.RadonFee}"
+        });
+
+        radonDocument.ReplaceText(new StringReplaceTextOptions
+        {
+            SearchValue = "Client:",
+            NewValue = $"Client: {client.ClientFirstName} {client.ClientLastName}"
+        });
 
         //find the second paragraph with instance of Dated: and replace it with the current date
         var datedParagraph = radonDocument.Paragraphs.LastOrDefault(p => p.Text.Contains("Dated:"));
@@ -229,23 +299,64 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         using var inspectionReportDocument = DocX.Load(InspectionReportFilePath);
 
         //Fill in client info
-        inspectionReportDocument.ReplaceText("{Name}", $"{client.ClientFirstName} {client.ClientLastName}");
-        inspectionReportDocument.ReplaceText("{ClientAddressLine1}", $"{client.ClientAddressLineOne}");
-        inspectionReportDocument.ReplaceText("{ClientAddressLine2}",
-            !string.IsNullOrEmpty(client.ClientAddressLineTwo) ? $"{client.ClientAddressLineTwo}" : string.Empty);
-        inspectionReportDocument.ReplaceText("{Client City State ZIP}", $"{client.ClientAddressCity}, {client.ClientAddressState} {client.ClientAddressZipCode}");
-        inspectionReportDocument.ReplaceText("{Client Phone}", $"{client.ClientPhoneNumber}");
-        inspectionReportDocument.ReplaceText("{Client Email}", $"{client.ClientEmailAddress}");
+        inspectionReportDocument.ReplaceText(new StringReplaceTextOptions
+        {
+            SearchValue = "{Name}", 
+            NewValue = $"{client.ClientFirstName} {client.ClientLastName}"
+        });
+        inspectionReportDocument.ReplaceText(new StringReplaceTextOptions
+        {
+            SearchValue = "{ClientAddressLine1}",
+            NewValue = $"{client.ClientAddressLineOne}"
+        });
+        inspectionReportDocument.ReplaceText(new StringReplaceTextOptions
+        {
+            SearchValue = "{ClientAddressLine2}",
+            NewValue = !string.IsNullOrEmpty(client.ClientAddressLineTwo) ? $"{client.ClientAddressLineTwo}" : string.Empty
+        });
+        inspectionReportDocument.ReplaceText(new StringReplaceTextOptions
+        {
+            SearchValue = "{Client City State ZIP}",
+            NewValue = $"{client.ClientAddressCity}, {client.ClientAddressState} {client.ClientAddressZipCode}"
+        });
+        inspectionReportDocument.ReplaceText(new StringReplaceTextOptions
+        {
+            SearchValue = "{Client Phone}",
+            NewValue = $"{client.ClientPhoneNumber}"
+        });
+        inspectionReportDocument.ReplaceText(new StringReplaceTextOptions
+        {
+            SearchValue = "{Client Email}",
+            NewValue = $"{client.ClientEmailAddress}"
+        });
         // replace {Today’s Date} with today's date
-        inspectionReportDocument.ReplaceText("{Today’s Date}", $"{DateTime.Today:MM/dd/yyyy}");
+        inspectionReportDocument.ReplaceText(new StringReplaceTextOptions
+        {
+            SearchValue = "{Today’s Date}",
+            NewValue = $"{DateTime.Today:MM/dd/yyyy}"
+        });
         
         //fill in inspection address info
-        inspectionReportDocument.ReplaceText("{InspectionAddressLine1}", $"{client.InspectionAddressLineOne}");
-        inspectionReportDocument.ReplaceText("{InspectionAddressLine2}",
-                       !string.IsNullOrEmpty(client.InspectionAddressLineTwo) ? $"{client.InspectionAddressLineTwo}" : string.Empty);
-        inspectionReportDocument.ReplaceText("{Inspection City State ZIP}", $"{client.InspectionAddressCity}, {client.InspectionAddressState} {client.InspectionAddressZipCode}");
-
-        inspectionReportDocument.ReplaceText("{Selling Agent}", $"{client.AgentName}");
+        inspectionReportDocument.ReplaceText(new StringReplaceTextOptions
+        {
+            SearchValue = "{InspectionAddressLine1}",
+            NewValue = $"{client.InspectionAddressLineOne}"
+        });
+        inspectionReportDocument.ReplaceText(new StringReplaceTextOptions
+        {
+            SearchValue = "{InspectionAddressLine2}",
+            NewValue = !string.IsNullOrEmpty(client.InspectionAddressLineTwo) ? $"{client.InspectionAddressLineTwo}" : string.Empty
+        });
+        inspectionReportDocument.ReplaceText(new StringReplaceTextOptions
+        {
+            SearchValue = "{Inspection City State ZIP}",
+            NewValue = $"{client.InspectionAddressCity}, {client.InspectionAddressState} {client.InspectionAddressZipCode}"
+        });
+        inspectionReportDocument.ReplaceText(new StringReplaceTextOptions
+        {
+            SearchValue = "{Selling Agent}",
+            NewValue = $"{client.AgentName}"
+        });
 
         //replace text {inspection image} with image from url
         var inspectionImageParagraph = inspectionReportDocument.Paragraphs.FirstOrDefault(p => p.Text.Contains("{inspection image}"));
@@ -315,12 +426,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
             $"{client.ClientFirstName} {client.ClientLastName} {client.InspectionAddressLineOne} Inspection Report {Guid.NewGuid()}.docx");
     }
 
-    private static string ReplaceFunc(string findStr)
-    {
-        return _replacePatterns.GetValueOrDefault(findStr, findStr);
-    }
-
-    public async void AddLinesToReport(List<DocumentTextLineModel> inspectionReportLines, List<DocumentImageModel> images, string section, Document inspectionReportDocument, string replaceString)
+    public async void AddLinesToReport(List<DocumentTextLineModel> inspectionReportLines, List<DocumentImageModel>? images, string section, Document inspectionReportDocument, string replaceString)
     {
         var sectionLines = inspectionReportLines.Where(l => l.SectionName == section).ToList();
 
@@ -335,7 +441,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
             targetParagraph?.InsertText(line.LineText + "\n", false, new Formatting() { FontColor = color});
         }
 
-        if (images.Count > 0 && images.Any(x => x.SectionName == section))
+        if (images?.Count > 0 && images.Any(x => x.SectionName == section))
         {
             var sectionedImages = images.Where(i => i.SectionName == section).ToList();
             foreach (var image in sectionedImages)
@@ -345,10 +451,14 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
             }
         }
 
-        inspectionReportDocument.ReplaceText(replaceString, "");
+        inspectionReportDocument.ReplaceText(new StringReplaceTextOptions
+        {
+            SearchValue = replaceString,
+            NewValue = string.Empty
+        });
     }
 
-    private async Task AddImageToDocumentAsync(Document inspectionAgreementDocument, string imageUrl, int paragraphIndex, float imageWidth = 0.5f, bool centerImage = false)
+    private static async Task AddImageToDocumentAsync(Document inspectionAgreementDocument, string imageUrl, int paragraphIndex, float imageWidth = 0.5f, bool centerImage = false)
     {
         try
         {
@@ -398,7 +508,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         }
     }
 
-    private void ReplaceLastDatedInInspectionAgreement(Container doc, string currentDate)
+    private static void ReplaceLastDatedInInspectionAgreement(Container doc, string currentDate)
     {
         // Iterate through paragraphs in reverse order
         for (var i = doc.Paragraphs.Count - 1; i >= 0; i--)
@@ -413,13 +523,17 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
                 if (lastIndex == -1) continue;
                 // Replace only the last occurrence of "Dated:" in the line
                 var updatedLine = line[..lastIndex] + $"Dated: {currentDate}" + line[(lastIndex + "Dated:".Length)..];
-                paragraph.ReplaceText(line, updatedLine);
+                paragraph.ReplaceText(new StringReplaceTextOptions
+                {
+                    SearchValue = line, 
+                    NewValue = updatedLine
+                });
                 return; // Exit the loop after replacing the text in the last occurrence
             }
         }
     }
 
-    private IEnumerable<string> GetListOfStringsToRemove(ClientModel client)
+    private static List<string> GetListOfStringsToRemove(ClientModel client)
     {
         var listOfStrings = new List<string>();
         if (string.IsNullOrEmpty(client.ClientFirstName) && string.IsNullOrEmpty(client.ClientLastName))
