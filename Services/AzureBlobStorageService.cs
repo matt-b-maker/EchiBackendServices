@@ -4,7 +4,7 @@ namespace EchiBackendServices.Services;
 
 public class AzureBlobStorageService
 {
-    private readonly string _storageConnectionString = Properties.Resources.AzureBlobStorageConnectionString;
+    private readonly string? _storageConnectionString = Environment.GetEnvironmentVariable("AzureBlobStorageConnectionString");
 
     public async Task<string> UploadFileToAzureStorage(Stream fileStream, string containerName, string fileName)
     {
