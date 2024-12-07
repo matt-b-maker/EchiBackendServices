@@ -11,11 +11,14 @@ using Color = System.Drawing.Color;
 using Container = Xceed.Document.NET.Container;
 using Formatting = Xceed.Document.NET.Formatting;
 using Image = SixLabors.ImageSharp.Image;
+using SixLabors.ImageSharp.Formats.Jpeg;
 
 namespace EchiBackendServices.Services;
 
 public class DocumentService(AzureBlobStorageService azureBlobStorageService)
 {
+    private static readonly object _docLock = new();
+
     public string DocumentsDirectory { get; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Documents");
 
@@ -62,7 +65,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
 
             inspectionAgreementDocument.ReplaceText(new StringReplaceTextOptions
             {
-                SearchValue = "This agreement dated ______", 
+                SearchValue = "This agreement dated ______",
                 NewValue = $"This agreement dated {currentDate}"
             });
             inspectionAgreementDocument.ReplaceText(new StringReplaceTextOptions
@@ -104,6 +107,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
                 };
                 inspectionAgreementDocument.ReplaceText(replaceOptions);
             }
+
             if (!string.IsNullOrEmpty(client.ClientPhoneNumber))
             {
                 var replaceOptions = new StringReplaceTextOptions
@@ -151,7 +155,8 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
                 var replaceOptions = new StringReplaceTextOptions
                 {
                     SearchValue = "{inspection city, state zip}",
-                    NewValue = $"{client.InspectionAddressCity}, {client.InspectionAddressState} {client.InspectionAddressZipCode}"
+                    NewValue =
+                        $"{client.InspectionAddressCity}, {client.InspectionAddressState} {client.InspectionAddressZipCode}"
                 };
                 inspectionAgreementDocument.ReplaceText(replaceOptions);
             }
@@ -280,7 +285,8 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
             $"{client.ClientFirstName} {client.ClientLastName} {client.InspectionAddressLineOne} Radon Addendum {Guid.NewGuid()}.docx");
     }
 
-    public async Task<string> CreateInspectionReport(ClientModel client, List<DocumentTextLineModel> inspectionReportLines, List<DocumentImageModel>? images)
+    public async Task<string> CreateInspectionReport(ClientModel client,
+        List<DocumentTextLineModel> inspectionReportLines, List<DocumentImageModel>? images)
     {
         Directory.CreateDirectory(DocumentsDirectory); // Create directory if it doesn't exist
 
@@ -301,7 +307,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         //Fill in client info
         inspectionReportDocument.ReplaceText(new StringReplaceTextOptions
         {
-            SearchValue = "{Name}", 
+            SearchValue = "{Name}",
             NewValue = $"{client.ClientFirstName} {client.ClientLastName}"
         });
         inspectionReportDocument.ReplaceText(new StringReplaceTextOptions
@@ -312,7 +318,9 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         inspectionReportDocument.ReplaceText(new StringReplaceTextOptions
         {
             SearchValue = "{ClientAddressLine2}",
-            NewValue = !string.IsNullOrEmpty(client.ClientAddressLineTwo) ? $"{client.ClientAddressLineTwo}" : string.Empty
+            NewValue = !string.IsNullOrEmpty(client.ClientAddressLineTwo)
+                ? $"{client.ClientAddressLineTwo}"
+                : string.Empty
         });
         inspectionReportDocument.ReplaceText(new StringReplaceTextOptions
         {
@@ -335,7 +343,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
             SearchValue = "{Today’s Date}",
             NewValue = $"{DateTime.Today:MM/dd/yyyy}"
         });
-        
+
         //fill in inspection address info
         inspectionReportDocument.ReplaceText(new StringReplaceTextOptions
         {
@@ -345,12 +353,15 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         inspectionReportDocument.ReplaceText(new StringReplaceTextOptions
         {
             SearchValue = "{InspectionAddressLine2}",
-            NewValue = !string.IsNullOrEmpty(client.InspectionAddressLineTwo) ? $"{client.InspectionAddressLineTwo}" : string.Empty
+            NewValue = !string.IsNullOrEmpty(client.InspectionAddressLineTwo)
+                ? $"{client.InspectionAddressLineTwo}"
+                : string.Empty
         });
         inspectionReportDocument.ReplaceText(new StringReplaceTextOptions
         {
             SearchValue = "{Inspection City State ZIP}",
-            NewValue = $"{client.InspectionAddressCity}, {client.InspectionAddressState} {client.InspectionAddressZipCode}"
+            NewValue =
+                $"{client.InspectionAddressCity}, {client.InspectionAddressState} {client.InspectionAddressZipCode}"
         });
         inspectionReportDocument.ReplaceText(new StringReplaceTextOptions
         {
@@ -359,61 +370,79 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         });
 
         //replace text {inspection image} with image from url
-        var inspectionImageParagraph = inspectionReportDocument.Paragraphs.FirstOrDefault(p => p.Text.Contains("{inspection image}"));
+        var inspectionImageParagraph =
+            inspectionReportDocument.Paragraphs.FirstOrDefault(p => p.Text.Contains("{inspection image}"));
+
         if (inspectionImageParagraph != null && !string.IsNullOrEmpty(client.MainInspectionImageUrl))
         {
             var imageUrl = client.MainInspectionImageUrl;
-            await AddImageToDocumentAsync(inspectionReportDocument, imageUrl, inspectionReportDocument.Paragraphs.IndexOf(inspectionImageParagraph), 0.6f, true);
+            await AddImageToDocumentAsync(inspectionReportDocument, imageUrl, inspectionImageParagraph, 0.6f, true);
             inspectionImageParagraph.Remove(false);
         }
 
         //Grounds Section
-        AddLinesToReport(inspectionReportLines, images, InspectionSections.GroundsSection, inspectionReportDocument, "{grounds}");
+        await AddLinesToReport(inspectionReportLines, images, InspectionSections.GroundsSection,
+            inspectionReportDocument, "{grounds}");
 
         //Exterior Walls Section
-        AddLinesToReport(inspectionReportLines, images, InspectionSections.ExteriorWallsSection, inspectionReportDocument, "{exterior walls}");
+        await AddLinesToReport(inspectionReportLines, images, InspectionSections.ExteriorWallsSection,
+            inspectionReportDocument, "{exterior walls}");
 
         //Roofing Section
-        AddLinesToReport(inspectionReportLines, images, InspectionSections.RoofingSection, inspectionReportDocument, "{roofing}");
+        await AddLinesToReport(inspectionReportLines, images, InspectionSections.RoofingSection,
+            inspectionReportDocument, "{roofing}");
 
         //Windows and Doors Section
-        AddLinesToReport(inspectionReportLines, images, InspectionSections.WindowsAndDoorsSection, inspectionReportDocument, "{windows and doors}");
+        await AddLinesToReport(inspectionReportLines, images, InspectionSections.WindowsAndDoorsSection,
+            inspectionReportDocument, "{windows and doors}");
 
         //Attic Space Section
-        AddLinesToReport(inspectionReportLines, images, InspectionSections.AtticSpaceSection, inspectionReportDocument, "{attic space}");
+        await AddLinesToReport(inspectionReportLines, images, InspectionSections.AtticSpaceSection,
+            inspectionReportDocument, "{attic space}");
 
         //Foundation Section
-        AddLinesToReport(inspectionReportLines, images, InspectionSections.FoundationSection, inspectionReportDocument, "{foundation}");
+        await AddLinesToReport(inspectionReportLines, images, InspectionSections.FoundationSection,
+            inspectionReportDocument, "{foundation}");
 
         //Interior W/C/F Section
-        AddLinesToReport(inspectionReportLines, images, InspectionSections.InteriorWcfSection, inspectionReportDocument, "{interior w/c/f}");
+        await AddLinesToReport(inspectionReportLines, images, InspectionSections.InteriorWcfSection,
+            inspectionReportDocument, "{interior w/c/f}");
 
         //Heating Section
-        AddLinesToReport(inspectionReportLines, images, InspectionSections.HeatingSection, inspectionReportDocument, "{heating}");
+        await AddLinesToReport(inspectionReportLines, images, InspectionSections.HeatingSection,
+            inspectionReportDocument, "{heating}");
 
         //Electric Section
-        AddLinesToReport(inspectionReportLines, images, InspectionSections.ElectricSection, inspectionReportDocument, "{electric}");
+        await AddLinesToReport(inspectionReportLines, images, InspectionSections.ElectricSection,
+            inspectionReportDocument, "{electric}");
 
         //Plumbing Section
-        AddLinesToReport(inspectionReportLines, images, InspectionSections.PlumbingSection, inspectionReportDocument, "{plumbing}");
+        await AddLinesToReport(inspectionReportLines, images, InspectionSections.PlumbingSection,
+            inspectionReportDocument, "{plumbing}");
 
         //Kitchen Section
-        AddLinesToReport(inspectionReportLines, images, InspectionSections.KitchenSection, inspectionReportDocument, "{kitchen}");
+        await AddLinesToReport(inspectionReportLines, images, InspectionSections.KitchenSection,
+            inspectionReportDocument, "{kitchen}");
 
         //Bathrooms Section
-        AddLinesToReport(inspectionReportLines, images, InspectionSections.BathroomsSection, inspectionReportDocument, "{bathrooms}");
+        await AddLinesToReport(inspectionReportLines, images, InspectionSections.BathroomsSection,
+            inspectionReportDocument, "{bathrooms}");
 
         //Laundry Section
-        AddLinesToReport(inspectionReportLines, images, InspectionSections.LaundrySection, inspectionReportDocument, "{laundry}");
+        await AddLinesToReport(inspectionReportLines, images, InspectionSections.LaundrySection,
+            inspectionReportDocument, "{laundry}");
 
         //Garage Section
-        AddLinesToReport(inspectionReportLines, images, InspectionSections.GarageSection, inspectionReportDocument, "{garage}");
+        await AddLinesToReport(inspectionReportLines, images, InspectionSections.GarageSection,
+            inspectionReportDocument, "{garage}");
 
         //Outdoor Living Space Section
-        AddLinesToReport(inspectionReportLines, images, InspectionSections.OutdoorLivingSpaceSection, inspectionReportDocument, "{outdoor living space}");
+        await AddLinesToReport(inspectionReportLines, images, InspectionSections.OutdoorLivingSpaceSection,
+            inspectionReportDocument, "{outdoor living space}");
 
         //Additional Comments Section
-        AddLinesToReport(inspectionReportLines, images, InspectionSections.AdditionalCommentsSection, inspectionReportDocument, "{additional comments}");
+        await AddLinesToReport(inspectionReportLines, images, InspectionSections.AdditionalCommentsSection,
+            inspectionReportDocument, "{additional comments}");
 
         // Save the document
         inspectionReportDocument.Save();
@@ -426,7 +455,8 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
             $"{client.ClientFirstName} {client.ClientLastName} {client.InspectionAddressLineOne} Inspection Report {Guid.NewGuid()}.docx");
     }
 
-    public async void AddLinesToReport(List<DocumentTextLineModel> inspectionReportLines, List<DocumentImageModel>? images, string section, Document inspectionReportDocument, string replaceString)
+    public async Task AddLinesToReport(List<DocumentTextLineModel> inspectionReportLines,
+        List<DocumentImageModel>? images, string section, Document inspectionReportDocument, string replaceString)
     {
         var sectionLines = inspectionReportLines.Where(l => l.SectionName == section).ToList();
 
@@ -438,7 +468,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         {
             //translate color property to System.Drawing.Color
             var color = Color.FromName(line.Color ?? "Black");
-            targetParagraph?.InsertText(line.LineText + "\n", false, new Formatting() { FontColor = color});
+            targetParagraph?.InsertText(line.LineText + "\n", false, new Formatting() {FontColor = color});
         }
 
         if (images?.Count > 0 && images.Any(x => x.SectionName == section))
@@ -446,8 +476,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
             var sectionedImages = images.Where(i => i.SectionName == section).ToList();
             foreach (var image in sectionedImages)
             {
-                await AddImageToDocumentAsync(inspectionReportDocument, image.ImageUrl,
-                    inspectionReportDocument.Paragraphs.IndexOf(targetParagraph), 0.25f);
+                await AddImageToDocumentAsync(inspectionReportDocument, image.ImageUrl, targetParagraph, 0.25f);
             }
         }
 
@@ -458,7 +487,8 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         });
     }
 
-    private static async Task AddImageToDocumentAsync(Document inspectionAgreementDocument, string imageUrl, int paragraphIndex, float imageWidth = 0.5f, bool centerImage = false)
+    private static async Task AddImageToDocumentAsync(Document document, string imageUrl, Paragraph targetParagraph,
+        float imageWidth = 0.5f, bool centerImage = false)
     {
         try
         {
@@ -474,30 +504,35 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
 
             // Calculate the desired width based on half of the page width
             // Adjust this calculation as needed based on your document layout
-            var pageWidth = inspectionAgreementDocument.PageWidth;
+            var pageWidth = document.PageWidth;
             var desiredWidth = pageWidth * imageWidth; // Set the image width to half the page width
 
             // Calculate the scaled height to maintain aspect ratio
-            var aspectRatio = image.Width / (float)image.Height;
-            var desiredHeight = (int)(desiredWidth / aspectRatio);
+            var aspectRatio = image.Width / (float) image.Height;
+            var desiredHeight = (int) (desiredWidth / aspectRatio);
 
             // Resize the image using ImageSharp
-            image.Mutate(x => x.Resize((int)desiredWidth, desiredHeight));
+            image.Mutate(x =>
+            {
+                x.Resize((int) desiredWidth, desiredHeight);
+                x.AutoOrient();
+            });
 
             // Convert the resized image back to bytes
-            using var resizedImageStream = new MemoryStream();
-            image.SaveAsJpeg(resizedImageStream); // Save as JPEG format or other desired format
+            // Generate a temporary file path with .jpg extension
+            var tempFilePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".jpg");
+            await image.SaveAsync(tempFilePath);
 
             // Add the resized image stream to the document
-            var newParagraph = inspectionAgreementDocument.InsertParagraph(paragraphIndex, "", false);
-            var resizedImage = inspectionAgreementDocument.AddImage(resizedImageStream);
+            //var newParagraph = document.InsertParagraph(paragraphIndex, "", false);
+            var resizedImage = document.AddImage(tempFilePath);
             var picture = resizedImage.CreatePicture();
-            newParagraph.AppendPicture(picture);
+            targetParagraph.AppendPicture(picture);
 
             // Optionally center the image
             if (centerImage)
             {
-                newParagraph.Alignment = Alignment.center;
+                targetParagraph.Alignment = Alignment.center;
             }
         }
         catch (Exception ex)
@@ -514,7 +549,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         for (var i = doc.Paragraphs.Count - 1; i >= 0; i--)
         {
             var paragraph = doc.Paragraphs[i];
-            var lines = paragraph.Text.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+            var lines = paragraph.Text.Split(new[] {Environment.NewLine}, StringSplitOptions.None);
 
             for (var j = lines.Length - 1; j >= 0; j--)
             {
@@ -525,7 +560,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
                 var updatedLine = line[..lastIndex] + $"Dated: {currentDate}" + line[(lastIndex + "Dated:".Length)..];
                 paragraph.ReplaceText(new StringReplaceTextOptions
                 {
-                    SearchValue = line, 
+                    SearchValue = line,
                     NewValue = updatedLine
                 });
                 return; // Exit the loop after replacing the text in the last occurrence
@@ -540,12 +575,14 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
             listOfStrings.Add("{name}");
         if (string.IsNullOrEmpty(client.ClientAddressLineOne)) listOfStrings.Add("(Address 1}");
         if (string.IsNullOrEmpty(client.ClientAddressLineTwo)) listOfStrings.Add("{address 2}");
-        if (string.IsNullOrEmpty(client.ClientAddressCity) || string.IsNullOrEmpty(client.ClientAddressState) || string.IsNullOrEmpty(client.ClientAddressZipCode)) listOfStrings.Add("{City, state zip}");
+        if (string.IsNullOrEmpty(client.ClientAddressCity) || string.IsNullOrEmpty(client.ClientAddressState) ||
+            string.IsNullOrEmpty(client.ClientAddressZipCode)) listOfStrings.Add("{City, state zip}");
         if (string.IsNullOrEmpty(client.ClientPhoneNumber)) listOfStrings.Add("{phone}");
         if (string.IsNullOrEmpty(client.ClientEmailAddress)) listOfStrings.Add("{Email}");
         if (string.IsNullOrEmpty(client.InspectionAddressLineOne)) listOfStrings.Add("{Inspection address 1}");
         if (string.IsNullOrEmpty(client.InspectionAddressLineTwo)) listOfStrings.Add("{Inspection address 2}");
-        if (string.IsNullOrEmpty(client.InspectionAddressCity) || string.IsNullOrEmpty(client.InspectionAddressState) || string.IsNullOrEmpty(client.InspectionAddressZipCode)) listOfStrings.Add("{inspection city, state zip}");
+        if (string.IsNullOrEmpty(client.InspectionAddressCity) || string.IsNullOrEmpty(client.InspectionAddressState) ||
+            string.IsNullOrEmpty(client.InspectionAddressZipCode)) listOfStrings.Add("{inspection city, state zip}");
         if (string.IsNullOrEmpty(client.Fee)) listOfStrings.Add("{Inspection Fee}");
 
         return listOfStrings;
