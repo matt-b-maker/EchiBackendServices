@@ -377,7 +377,11 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         {
             var imageUrl = client.MainInspectionImageUrl;
             await AddImageToDocumentAsync(inspectionReportDocument, imageUrl, inspectionImageParagraph, 0.6f, true);
-            inspectionImageParagraph.Remove(false);
+            inspectionReportDocument.ReplaceText(new StringReplaceTextOptions()
+            {
+                SearchValue = "{inspection image}",
+                NewValue = string.Empty
+            });
         }
 
         //Grounds Section
