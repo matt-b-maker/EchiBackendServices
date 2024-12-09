@@ -468,8 +468,19 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
 
         var targetParagraph = inspectionReportDocument.Paragraphs.FirstOrDefault(p => p.Text.Contains(replaceString));
 
+        if (targetParagraph is null) return;
+
         foreach (var line in sectionLines)
         {
+            if (line.LineText.Contains("IMAGETOINSERT|"))
+            {
+                var lineTextSplit = line.LineText.Split('|');
+                if (lineTextSplit.Length < 2) continue;
+                var imageUrl = lineTextSplit.Last();                
+                await AddImageToDocumentAsync(inspectionReportDocument, imageUrl, targetParagraph, 0.25f);
+                continue;
+            }
+
             //translate color property to System.Drawing.Color
             var color = Color.FromName(line.Color ?? "Black");
             targetParagraph?.InsertText(line.LineText + "\n", false, new Formatting() {FontColor = color});
