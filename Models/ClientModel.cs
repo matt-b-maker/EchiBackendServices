@@ -47,8 +47,8 @@ public class ClientModel: INotifyPropertyChanged
 
     public string? ClientPhoneNumber { get; set; } = string.Empty;
 
-    public string? Fee { get; set; } = string.Empty;
-    public string? RadonFee { get; set; } = string.Empty;
+    public string FeeWithTaxes { get; set; } = string.Empty;
+    public string? RadonFeeWithTaxes { get; set; } = string.Empty;
 
     public string InspectionAddressLineOne { get; set; } = string.Empty;
     public string InspectionAddressLineTwo { get; set; } = string.Empty;
@@ -86,7 +86,7 @@ public class ClientModel: INotifyPropertyChanged
         ClientAddressState = "NM";
         ClientAddressZipCode = string.Empty;
         ClientPhoneNumber = string.Empty;
-        Fee = string.Empty;
+        FeeWithTaxes = string.Empty;
         InspectionAddressLineOne = string.Empty;
         InspectionAddressLineTwo = string.Empty;
         InspectionAddressCity = string.Empty;

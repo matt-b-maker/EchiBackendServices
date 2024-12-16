@@ -161,12 +161,12 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
                 inspectionAgreementDocument.ReplaceText(replaceOptions);
             }
 
-            if (!string.IsNullOrEmpty(client.Fee))
+            if (!string.IsNullOrEmpty(client.FeeWithTaxes))
             {
                 var replaceOptions = new StringReplaceTextOptions
                 {
                     SearchValue = "{Inspection Fee}",
-                    NewValue = $"${client.Fee.Trim('$')}"
+                    NewValue = $"${client.FeeWithTaxes.Trim('$')}"
                 };
                 inspectionAgreementDocument.ReplaceText(replaceOptions);
             }
@@ -258,7 +258,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         radonDocument.ReplaceText(new StringReplaceTextOptions
         {
             SearchValue = "$________",
-            NewValue = $"{client.RadonFee}"
+            NewValue = $"{client.RadonFeeWithTaxes}"
         });
 
         radonDocument.ReplaceText(new StringReplaceTextOptions
@@ -598,7 +598,7 @@ public class DocumentService(AzureBlobStorageService azureBlobStorageService)
         if (string.IsNullOrEmpty(client.InspectionAddressLineTwo)) listOfStrings.Add("{Inspection address 2}");
         if (string.IsNullOrEmpty(client.InspectionAddressCity) || string.IsNullOrEmpty(client.InspectionAddressState) ||
             string.IsNullOrEmpty(client.InspectionAddressZipCode)) listOfStrings.Add("{inspection city, state zip}");
-        if (string.IsNullOrEmpty(client.Fee)) listOfStrings.Add("{Inspection Fee}");
+        if (string.IsNullOrEmpty(client.FeeWithTaxes)) listOfStrings.Add("{Inspection Fee}");
 
         return listOfStrings;
     }
